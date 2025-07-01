@@ -1,0 +1,25 @@
+.question-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 100px;
+  }
+
+  .big-question {
+    margin-top: 5px;
+    font-size: 100px;
+    
+    margin-bottom: 100px;
+  }
+    
+  .big-select {
+    margin-top: 50px;
+    font-size: 20px;
+    padding: 10px;  
+    margin-bottom: 10px;
+  }
+  
+  .big-button {
+    font-size: 18px;
+    padding: 20px 20px;
+  }

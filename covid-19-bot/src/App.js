@@ -5,12 +5,14 @@ import Question from './Question.js';
 function App() {
   return (
     <div className="App" >
-      <header className="App-header">
+      { <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" style={{ position: 'absolute', top: '20px', left: '50px' }} />
-        
-      </header>
-      <div>Hello</div>
-      <Question/>
+        <div>
+          Questions 
+        </div>
+      </header> }
+      
+      <Question/> 
       
     </div>
   );
