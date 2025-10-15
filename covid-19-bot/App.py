@@ -13,6 +13,8 @@ import pandas as pd
 import numpy as np
 import pickle as pickle 
 import os
+from torch.utils.data import DataLoader, TensorDataset
+
 
 
 app = Flask(__name__)
@@ -56,50 +58,58 @@ if __name__ == '__main__':
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_PATH = os.path.join(BASE_DIR, "public", "data.csv")
     df = pd.read_csv(DATA_PATH)
-    #print(df.head())
+    print(df.head())
 
-    df['DATE_DIED'] = [1 if each =="9999-99-99" else 0 for each in df["DATE_DIED"]]
-    df['CLASIFFICATION_FINAL'] = [0 if each > 3 else each for each in df['CLASIFFICATION_FINAL']]
-    print("HIIIIIII",df['CLASIFFICATION_FINAL'].value_counts())
-    df.drop('USMER', axis=1, inplace=True)
-    df.drop('MEDICAL_UNIT', axis=1, inplace=True)
-    df.drop('PATIENT_TYPE', axis=1, inplace=True)
-    #print(df.head())
+    
+x = df.iloc[0:4000, list(range(0,21))]
+y = df['Severity'].iloc[0:4000]
 
-    x = df.iloc[0:400, list(range(0,16)) + [17]]
-    y = df['CLASIFFICATION_FINAL'].iloc[0:400]
-    x.to_numpy()
-    y.to_numpy()
-    x_test = df.iloc[400:800, list(range(0,16)) + [17]]
-    y_test = df['CLASIFFICATION_FINAL'].iloc[400:800]
 
-    scaler = StandardScaler()
-    scaler.fit(x)
-    x_scaled = scaler.transform(x)
-    scaler.fit(x_test)
-    x_test_scaled = scaler.transform(x_test)
+x.to_numpy()
+y.to_numpy()
+x_test = df.iloc[4000:8000, list(range(0,21))]
+y_test = df['Severity'].iloc[4000:8000]
 
-    class MultiLayerLogisticRegression(nn.Module):
-        def __init__(self, input_size, num_classes):
-            super(MultiLayerLogisticRegression, self).__init__()
-            self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_size, 64),
-            nn.ReLU(),
-            nn.Dropout(p=0.3),
-            nn.Linear(64, 128),
-            nn.ReLU(),
-            nn.Dropout(p=0.3),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Dropout(p=0.3),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Dropout(p=0.3),
-            nn.Linear(64, num_classes)
-            )
+scaler = StandardScaler()
+scaler.fit(x)
+scaler.fit(x_test)
+x_scaled = scaler.transform(x)
+x_test_scaled = scaler.transform(x_test)
 
-        def forward(self, x):
-            logits = self.linear_relu_stack(x)
-            return logits
+x_Traintensor = torch.tensor(x_scaled)
+y_Traintensor = torch.tensor(y.values)
+x_Testtensor = torch.tensor(x_test_scaled)
+y_Testtensor = torch.tensor(y_test.values)
+
+
+train_dataset = TensorDataset(x_Traintensor, y_Traintensor)
+test_dataset = TensorDataset(x_Testtensor, y_Testtensor)
+
+#Test differnt batch sizes with cross validaiton
+test_loader = DataLoader(test_dataset, shuffle=True, batch_size = 96)
+train_loader = DataLoader(train_dataset, shuffle=True, batch_size = 96)
+
+class MultiLayerLogisticRegression(nn.Module):
+    def __init__(self, input_size, num_classes):
+        super(MultiLayerLogisticRegression, self).__init__()
+        self.linear_relu_stack = nn.Sequential(
+        nn.Linear(input_size, 64),
+        nn.ReLU(),
+        nn.Dropout(p=0.3),
+        nn.Linear(64, 128),
+        nn.ReLU(),
+        nn.Dropout(p=0.3),
+        nn.Linear(128, 128),
+        nn.ReLU(),
+        nn.Dropout(p=0.3),
+        nn.Linear(128, 64),
+        nn.ReLU(),
+        nn.Dropout(p=0.3),
+        nn.Linear(64, num_classes)
+        )
+
+    def forward(self, x):
+        logits = self.linear_relu_stack(x)
+        return logits
 
     app.run(debug=False, host='0.0.0.0', port=8000)
