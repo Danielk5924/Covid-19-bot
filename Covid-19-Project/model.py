@@ -1,45 +1,60 @@
-#Train and Validate the model
-import torch
-import copy
-from copy import deepcopy
-from sklearn.model_selection import KFold
-from torch import nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, Subset
-from torchvision import datasets, transforms
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 import os
-import pandas as pd
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn.preprocessing import StandardScaler
 
 #This file contains the origional code used to train and test the model
 
 
+import numpy as np
+import pandas as pd
+import torch
+
+import pickle as pickle 
+
+import torchvision.datasets as datasets
+import torchvision.transforms as tf
+from torch.utils.data import DataLoader, TensorDataset
+import random
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
+seed = 0
+np.random.seed(seed)
+#torch.manual_seed(seed)
+random.seed(seed)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "public", "data.csv")
 df = pd.read_csv(DATA_PATH)
-print(df.head())
 
-    
-x = df.iloc[0:4000, list(range(0,21))]
-y = df['Severity'].iloc[0:4000]
+print("TABLE 1 \n", df.head())
 
+df = df[df['CLASIFFICATION_FINAL'] <= 4].copy()
+df['DATE_DIED'] = [1 if each =="9999-99-99" else 0 for each in df["DATE_DIED"]]
+#df['CLASIFFICATION_FINAL'] = [each if each > 3 else 1 for each in df['CLASIFFICATION_FINAL']]
+df.drop('USMER', axis=1, inplace=True)
+df.drop('MEDICAL_UNIT', axis=1, inplace=True)
+df.drop('PATIENT_TYPE', axis=1, inplace=True)
+print("TABLE 2 \n", df.head())
 
+x = df.iloc[0:8000, list(range(0,16)) + [17]]
+y = df['CLASIFFICATION_FINAL'].iloc[0:8000]
 x.to_numpy()
 y.to_numpy()
-x_test = df.iloc[4000:8000, list(range(0,21))]
-y_test = df['Severity'].iloc[4000:8000]
+x_test = df.iloc[8000:16000, list(range(0,16)) + [17]]
+y_test = df['CLASIFFICATION_FINAL'].iloc[8000:16000]
+# df.to_numpy()
+print("HELLOOOOO", df['CLASIFFICATION_FINAL'].value_counts())
 
-scaler = StandardScaler()
-scaler.fit(x)
-scaler.fit(x_test)
-x_scaled = scaler.transform(x)
-x_test_scaled = scaler.transform(x_test)
-
-x_Traintensor = torch.tensor(x_scaled)
+x_Traintensor = torch.tensor(x.values)
 y_Traintensor = torch.tensor(y.values)
-x_Testtensor = torch.tensor(x_test_scaled)
+x_Testtensor = torch.tensor(x_test.values)
 y_Testtensor = torch.tensor(y_test.values)
 
 
@@ -49,6 +64,21 @@ test_dataset = TensorDataset(x_Testtensor, y_Testtensor)
 #Test differnt batch sizes with cross validaiton
 test_loader = DataLoader(test_dataset, shuffle=True, batch_size = 96)
 train_loader = DataLoader(train_dataset, shuffle=True, batch_size = 96)
+
+
+
+
+# NN model
+
+import torch
+import copy
+from copy import deepcopy
+from sklearn.model_selection import KFold
+from torch import nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Subset
+from torchvision import datasets, transforms
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class MultiLayerLogisticRegression(nn.Module):
@@ -110,7 +140,7 @@ for fold, (train_idx, val_idx) in enumerate(kfold.split(dataset)):
     val_loader = DataLoader(Subset(dataset, val_idx), batch_size=64)
 
     # Model, optimizer, loss, scheduler (per fold)
-    model = MultiLayerLogisticRegression(input_size=17, num_classes=4)
+    model = MultiLayerLogisticRegression(input_size=17, num_classes=5)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
@@ -198,6 +228,3 @@ with torch.no_grad():
 
 accuracy = 100 * correct / total
 print(f"FINAL Accuracy: {accuracy:.2f}%")
-
-
-#epoch: 1500 and accuracy: 62
